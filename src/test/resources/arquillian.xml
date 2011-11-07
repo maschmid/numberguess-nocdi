@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<arquillian xmlns="http://www.jboss.org/arquillian-1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.jboss.org/arquillian-1.0 http://jboss.org/schema/arquillian/arquillian-1.0.xsd">
+
+    <group qualifier="Grid">
+        <container qualifier="container1" mode="manual"> <!-- "suite" is default -> mode specification can be omitted in this case -->
+            <configuration>
+                <property name="managementAddress">node1</property>
+                <property name="managementPort">9999</property>
+                <property name="jbossHome">/home/maschmid/testing/as7/node1/jboss-as-7.1.0.Alpha2-SNAPSHOT</property>
+                <property name="javaVmArguments">-Djboss.node.name=node1 -Djava.net.preferIPv4Stack=true</property>
+            </configuration>
+        </container>
+        <container qualifier="container2" mode="manual">
+            <configuration>
+                <property name="managementAddress">node2</property>
+                <property name="managementPort">9999</property>
+                <property name="jbossHome">/home/maschmid/testing/as7/node2/jboss-as-7.1.0.Alpha2-SNAPSHOT</property>
+                <property name="javaVmArguments">-Djboss.node.name=node2 -Djava.net.preferIPv4Stack=true</property>
+            </configuration>
+        </container>
+    </group>
+    
+</arquillian>
