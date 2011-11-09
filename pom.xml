@@ -161,7 +161,9 @@
                         </goals>
                         <configuration>
                             <skip>false</skip>
-                            <redirectTestOutputToFile>true</redirectTestOutputToFile>
+<!--
+                                 <redirectTestOutputToFile>true</redirectTestOutputToFile>
+-->
                             <trimStackTrace>false</trimStackTrace>
                             <printSummary>true</printSummary>
                         </configuration>
@@ -175,9 +177,6 @@
     <profiles>
         <profile>
             <id>arq-jbossas-managed-7</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
             <dependencies>
                 <dependency>
                     <groupId>org.jboss.as</groupId>
@@ -193,6 +192,42 @@
                 </dependency>
             </dependencies>
         </profile>
+
+        <profile>
+            <id>arq-jbossas-managed-6</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <dependencies>
+                 <dependency>
+                    <groupId>org.jboss.jbossas</groupId>
+                    <artifactId>jboss-as-client</artifactId>
+                    <version>6.0.0.Final</version>
+                    <type>pom</type>
+                </dependency>
+
+                <dependency>
+                    <groupId>org.jboss.arquillian.container</groupId>
+                    <artifactId>arquillian-jbossas-managed-6</artifactId>
+                    <version>1.0.0.CR2</version>
+                </dependency>
+
+                <dependency>
+                    <groupId>org.jboss.jbossas</groupId>
+                    <artifactId>jboss-server-manager</artifactId>
+                    <version>1.0.4.Final</version>
+                </dependency>
+                
+                <dependency>
+                    <groupId>org.jboss.spec</groupId>
+                    <artifactId>jboss-javaee-web-6.0</artifactId>
+                    <version>2.0.0.Final</version>
+                    <type>pom</type>
+                </dependency>
+            </dependencies>
+        </profile>
+
+
         <profile>
             <id>arq-jbossas-remote-7</id>
             <dependencies>

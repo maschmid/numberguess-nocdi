@@ -13,7 +13,29 @@
     </container>
 -->
 
-    <group qualifier="Grid">
+    <group qualifier="Grid6">
+
+        <container qualifier="container1" mode="manual">
+            <configuration>
+                <property name="profileName">all</property>
+                <property name="bindAddress">127.0.1.1</property>
+                <property name="jbossHome">/home/maschmid/java/jboss-6.1.0.Final.Weld-SNAPSHOT</property>
+                <property name="javaVmArguments">-Djboss.messaging.ServerPeerID=1</property>
+            </configuration>
+        </container>
+
+        <container qualifier="container2" mode="manual">
+            <configuration>
+                <property name="profileName">all2</property>
+                <property name="bindAddress">127.0.2.1</property>
+                <property name="jbossHome">/home/maschmid/java/jboss-6.1.0.Final.Weld-SNAPSHOT</property>
+                <property name="javaVmArguments">-Djboss.messaging.ServerPeerID=2</property>
+            </configuration>
+        </container>
+
+    </group>
+
+    <group qualifier="Grid7">
 
         <container qualifier="container1" mode="manual">
             <configuration>

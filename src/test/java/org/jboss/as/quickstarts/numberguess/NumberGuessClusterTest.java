@@ -20,8 +20,6 @@ package org.jboss.as.quickstarts.numberguess;
 import java.net.MalformedURLException;
 import java.net.URL;
 
-import junit.framework.Assert;
-
 import org.jboss.arquillian.test.api.ArquillianResource;
 import org.jboss.arquillian.ajocado.framework.AjaxSelenium;
 import org.jboss.arquillian.ajocado.locator.IdLocator;
