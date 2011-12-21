@@ -19,6 +19,8 @@ package org.jboss.as.quickstarts.numberguess;
 
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.jboss.arquillian.test.api.ArquillianResource;
 import org.jboss.arquillian.ajocado.framework.AjaxSelenium;
@@ -31,6 +33,8 @@ import org.jboss.arquillian.container.test.api.RunAsClient;
 import org.jboss.arquillian.container.test.api.TargetsContainer;
 import org.jboss.arquillian.drone.api.annotation.Drone;
 import org.jboss.arquillian.junit.Arquillian;
+import org.jboss.arquillian.junit.InSequence;
+import org.jboss.shrinkwrap.api.asset.EmptyAsset;
 import org.jboss.shrinkwrap.api.spec.WebArchive;
 import org.junit.Before;
 import org.junit.Test;
@@ -41,7 +45,6 @@ import static org.jboss.arquillian.ajocado.locator.LocatorFactory.xp;
 import static org.jboss.arquillian.ajocado.Ajocado.waitForHttp;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 /**
  * 
@@ -55,6 +58,9 @@ import static org.junit.Assert.fail;
 public class NumberGuessClusterTest {
    
     protected String MAIN_PAGE = "home.jsf";
+    
+    public static final long GRACE_TIME_TO_REPLICATE = 1000;
+    public static final long GRACE_TIME_TO_MEMBERSHIP_CHANGE = 3000;
     
     private static final String CONTAINER1 = "container1"; 
     private static final String CONTAINER2 = "container2"; 
@@ -75,6 +81,11 @@ public class NumberGuessClusterTest {
     protected String WIN_MSG = "Correct!";
     protected String LOSE_MSG = "No guesses left!";
     protected String HIGHER_MSG = "Higher!";
+    protected String LOWER_MSG = "Lower!";
+    
+    protected Pattern guessesNumberPattern = Pattern.compile("You have (\\d+) guesses remaining."); 
+    
+    private GameState gameState;
    
     @ArquillianResource
     private ContainerController controller;
@@ -85,19 +96,22 @@ public class NumberGuessClusterTest {
     @Drone
     AjaxSelenium selenium;
     
-    String contextPath1;    
+    String contextPath1;
     String contextPath2;
+    
+    boolean browsersSwitched = false;
    
-    @Deployment(name = DEPLOYMENT1, managed=false)
+    @Deployment(name = DEPLOYMENT1, managed=false, testable=false)
     @TargetsContainer(CONTAINER1)
     public static WebArchive createTestDeployment1() {
         return Deployments.createDeployment();
     }
     
-    @Deployment(name = DEPLOYMENT2, managed=false)
+    @Deployment(name = DEPLOYMENT2, managed=false, testable=false)
     @TargetsContainer(CONTAINER2)
     public static WebArchive createTestDeployment2() {
-        return Deployments.createDeployment();
+        return Deployments.createDeployment()
+            .addAsWebInfResource(EmptyAsset.INSTANCE, "force-hashcode-change.txt");
     }
     
     @Before
@@ -107,128 +121,13 @@ public class NumberGuessClusterTest {
         contextPath2 = System.getProperty("node2.contextPath");
     }
     
-  /*  @Test
-    @RunAsClient
-    public void test() throws MalformedURLException {
-        System.out.println("=== Before Containers Started ===");
-        controller.start(CONTAINER1);
-        controller.start(CONTAINER2);
-        
-        System.out.println("=== Containers Started ===");
-        
-        deployer.deploy(DEPLOYMENT1);
-        deployer.deploy(DEPLOYMENT2);
-        
-        System.out.println("=== Deployments Done ===");
-                
-        selenium.open(new URL(contextPath1 + "/" + MAIN_PAGE));
-        
-        Assert.assertTrue(selenium.isTextPresent("Guess a number..."));
-        
-        selenium.open(new URL(contextPath2 + "/" + MAIN_PAGE));
-        
-        Assert.assertTrue(selenium.isTextPresent("Guess a number..."));
-        
-        controller.stop(CONTAINER1);
-        controller.stop(CONTAINER2);  
-        
-        System.out.println("=== Containers Stopped ===");
-    }*/
-    
-    @Test
-    @RunAsClient
-    public void guessingWithFailoverTest() throws MalformedURLException, InterruptedException {
-        System.out.println("=== Before Containers Started ===");
-        controller.start(CONTAINER1);
-        controller.start(CONTAINER2);
-        
-        System.out.println("=== Containers Started ===");
-        
-        deployer.deploy(DEPLOYMENT1);
-        deployer.deploy(DEPLOYMENT2);
-        
-        selenium.open(new URL(contextPath1 + "/" + MAIN_PAGE));
-   
-        preFailurePart();
-
-        String newAddress = getAddressForSecondInstance();
-
-        // controller.stop(CONTAINER1);
-        
-        Thread.sleep(10000);
-
-        selenium.open(new URL(contextPath2 + "/" + newAddress));
-        
-        Thread.sleep(5000);
-
-        assertTrue("Page should contain message Higher!", selenium.isTextPresent(HIGHER_MSG));
-        assertEquals("Page should contain smallest number equal to 4", 4, Integer.parseInt(selenium.getText(GUESS_SMALLEST)));
-        assertEquals("Page should contain biggest number equal to 100", 100, Integer.parseInt(selenium.getText(GUESS_BIGGEST)));
-        assertTrue("Page should contain input field with value of 3", selenium.isElementPresent(GUESS_FIELD_WITH_VALUE));
-
-        postFailurePart();
-
-        assertTrue("Win page expected after playing smart.", isOnWinPage());      
-        
-        //controller.stop(CONTAINER1);
-        //controller.stop(CONTAINER2);  
-   }
-    
-    protected void preFailurePart() {
-        int numberOfGuesses = 3;
-        int guess = 0;
-
-        // enter several guesses (3)
-        while (true) {
-            while (isOnGuessPage() && guess < numberOfGuesses) {
-                enterGuess(++guess);
-            }
-
-            // we always want to enter at least 3 guesses so that we can continue
-            // in the other browser window with expected results
-            if (guess < numberOfGuesses) {
-                resetForm();
-                guess = 0;
-            } else {
-                break;
-            }
-        }
-    }
-    
-    protected void postFailurePart() {
-        int min, max, guess;
-        int i = 0;
-
-        //selenium.deleteAllVisibleCookies();
-
-        while (isOnGuessPage()) {
-            //selenium.deleteAllVisibleCookies();
-            /*
-            * 3+8 = 11 -> even though we have 10 attempts, it is possible to enter
-            * value 11 times, but the 11th time it is actually not guessing but
-            * only validating that 10 times has gone and the game is finished (no
-            * 11th guessing)
-            */
-            if (i >= 8) {
-                fail("Game should not be longer than 7 guesses in the second selenium after failover");
-            }
-
-            assertTrue("Expected smallest number on page", selenium.isElementPresent(GUESS_SMALLEST));
-            assertTrue("Expected biggest number on page", selenium.isElementPresent(GUESS_BIGGEST));
-
-            min = Integer.parseInt(selenium.getText(GUESS_SMALLEST));
-            max = Integer.parseInt(selenium.getText(GUESS_BIGGEST));
-            guess = min + ((max - min) / 2);
-            enterGuess(guess);
-            i++;
-        }
-    }
-    
     protected void resetForm() {
         waitForHttp(selenium).click(GUESS_RESTART);
+        gameState = null;
     }
 
-    protected void enterGuess(int guess) {
+    protected void enterGuess(int guess) throws InterruptedException {
+        gameState.setGuess(guess);
         selenium.type(GUESS_FIELD, String.valueOf(guess));
         waitForHttp(selenium).click(GUESS_SUBMIT);
     }
@@ -250,7 +149,6 @@ public class NumberGuessClusterTest {
     public String getAddressForSecondInstance() {
         String loc = selenium.getLocation().toString();
         String[] parsedStrings = loc.split("/");
-        // localContextPath = "/" + parsedStrings[3] + "/";
         StringBuilder sb = new StringBuilder();
         for (int i = 4; i < parsedStrings.length; i++) {
             sb.append("/").append(parsedStrings[i]);
@@ -275,21 +173,152 @@ public class NumberGuessClusterTest {
         return newAddress;
     }
     
-   /* @Test
-    public void stopTest() throws Exception {
-       System.out.println("=== Before Container 2 Started ===");
-       controller.start(CONTAINER2); //, new Config().add("managementPort", "29999").map()
-       System.out.println("===Container2 started===");
-       controller.stop(CONTAINER2);
-       System.out.println("===Container2 stopped===");
-    }*/
-    /*
+    private Integer getRemainingGuesses() {
+        Matcher m = guessesNumberPattern.matcher(selenium.getBodyText());
+        if (m.find()) {
+            return Integer.parseInt(m.group(1));
+        }
+        else {
+            return null;
+        }
+    }
+
+    /**
+     * Asserts the game state matches what the page displays
+     */
+    private void updateGameState() {
+        GameState nextState = new GameState();
+        nextState.setRemainingGuesses(getRemainingGuesses());
+        nextState.setLargest(Integer.parseInt(selenium.getText(GUESS_BIGGEST)));
+        nextState.setSmallest(Integer.parseInt(selenium.getText(GUESS_SMALLEST)));              
+        
+        System.out.println("remaining: " + nextState.getRemainingGuesses());
+        System.out.println("largest: " + nextState.getLargest());
+        System.out.println("smallest: " + nextState.getSmallest());
+        
+        if (gameState == null) {
+            // Initial state
+            assertEquals("Remaining guesses dosn't match", 10, nextState.getRemainingGuesses());
+            assertEquals("Smallest numbers dosn't match", 0, nextState.getSmallest());
+            assertEquals("Largest numbers dosn't match", 100, nextState.getLargest());
+        }
+        else {
+            nextState.setPreviousGuess(gameState.getGuess());
+            assertEquals("Remaining guesses dosn't match", gameState.getRemainingGuesses() - 1, nextState.getRemainingGuesses());
+
+            boolean higher = selenium.isTextPresent(HIGHER_MSG);
+            boolean lower = selenium.isTextPresent(LOWER_MSG);
+            
+            assertEquals(lower, (nextState.getLargest() < gameState.getLargest()));
+            if (gameState.getGuess() != 0) {
+                // Bug in numberguess, doesn't display "higher" for zero guess.
+                assertEquals(higher, (nextState.getSmallest() > gameState.getSmallest()));
+            }
+            assertTrue(!lower || !higher);
+        }
+ 
+        gameState = nextState;
+    }
+    
+    private void naiveStep() throws InterruptedException {
+        updateGameState();
+        enterGuess(gameState.getSmallest());
+    }
+    
+    private void smartStep() throws InterruptedException {
+        updateGameState();       
+        enterGuess(gameState.getSmallest() + ((gameState.getLargest() - gameState.getSmallest()) / 2));
+    }
+    
+    private void switchBrowsers() throws MalformedURLException {
+        String address = getAddressForSecondInstance();
+        String contextPath = browsersSwitched ? contextPath1 : contextPath2;
+        selenium.open(new URL(contextPath + "/" + address));
+        
+        browsersSwitched = !browsersSwitched;
+    }
+    
     @Test
-    public void killTest() throws Exception {
-       controller.start(CONTAINER2, new Config().add("managementPort", "9999").map());
-       System.out.println("===Container2 started again===");
-       controller.kill(CONTAINER2);
-       //this is now implemented the same way as stop -> softly
-       System.out.println("===Container2 killed===");
-    }*/
+    @InSequence(1)
+    public void guessingWithFailoverTest() throws MalformedURLException, InterruptedException {
+        controller.start(CONTAINER1);
+        deployer.deploy(DEPLOYMENT1);
+        controller.start(CONTAINER2);
+        deployer.deploy(DEPLOYMENT2);
+        
+        selenium.open(new URL(contextPath1 + "/" + MAIN_PAGE));
+        
+        // we always want to enter at least 3 guesses so that we can continue
+        // in the other browser window with expected results
+        do {
+            resetForm();
+            for (int i = 0; i < 3 && isOnGuessPage(); ++i) {
+                naiveStep();
+            }
+        } while(!isOnGuessPage());
+        
+        deployer.undeploy(DEPLOYMENT1);
+        controller.stop(CONTAINER1);
+        
+        Thread.sleep(GRACE_TIME_TO_REPLICATE);
+        
+        switchBrowsers();
+        
+        while(isOnGuessPage()) {
+            smartStep();
+        }
+        
+        assertTrue("Win page expected after playing smart.", isOnWinPage());      
+        
+        deployer.undeploy(DEPLOYMENT2);
+        controller.stop(CONTAINER2);
+    }
+    
+    @Test
+    @InSequence(2)
+    public void guessingWithInterleavingTest() throws MalformedURLException, InterruptedException {
+        controller.start(CONTAINER1);
+        deployer.deploy(DEPLOYMENT1);
+        
+        selenium.open(new URL(contextPath1 + "/" + MAIN_PAGE));
+         
+        for(;;) {
+            
+            smartStep();
+            
+            if (!isOnGuessPage()) {
+                break;
+            }
+            
+            if (browsersSwitched) {
+                controller.start(CONTAINER1);
+                deployer.deploy(DEPLOYMENT1);
+                
+                deployer.undeploy(DEPLOYMENT2);
+                controller.stop(CONTAINER2);
+            }
+            else {
+                controller.start(CONTAINER2);
+                deployer.deploy(DEPLOYMENT2);
+                
+                deployer.undeploy(DEPLOYMENT1);
+                controller.stop(CONTAINER1);
+            }
+            
+            Thread.sleep(GRACE_TIME_TO_MEMBERSHIP_CHANGE);
+            
+            switchBrowsers();
+        }
+        
+        assertTrue("Win page expected after playing smart.", isOnWinPage());      
+        
+        if (browsersSwitched) {           
+            deployer.undeploy(DEPLOYMENT2);
+            controller.stop(CONTAINER2);
+        }
+        else {
+            deployer.undeploy(DEPLOYMENT1);
+            controller.stop(CONTAINER1);
+        }
+    }
 }
