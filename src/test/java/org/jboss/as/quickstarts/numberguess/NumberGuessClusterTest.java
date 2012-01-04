@@ -60,7 +60,7 @@ public class NumberGuessClusterTest {
     protected String MAIN_PAGE = "home.jsf";
     
     public static final long GRACE_TIME_TO_REPLICATE = 1000;
-    public static final long GRACE_TIME_TO_MEMBERSHIP_CHANGE = 3000;
+    public static final long GRACE_TIME_TO_MEMBERSHIP_CHANGE = 5000;
     
     private static final String CONTAINER1 = "container1"; 
     private static final String CONTAINER2 = "container2"; 
@@ -158,7 +158,13 @@ public class NumberGuessClusterTest {
         String firstPart = "";
         String sid = "";
 
+        System.out.println("getAddressForSecondInstance location: " + loc);
         if (selenium.isCookiePresent("JSESSIONID")) {
+            System.out.println("JSESSIONID cookie: " + selenium.getCookieByName("JSESSIONID").getValue());
+        }              
+        
+        //if (selenium.isCookiePresent("JSESSIONID")) {
+        if (!newAddress.contains(";")) {
             sid = selenium.getCookieByName("JSESSIONID").getValue();
             firstPart = newAddress;
         } else {
@@ -169,6 +175,10 @@ public class NumberGuessClusterTest {
         }
 
         newAddress = firstPart + ";jsessionid=" + sid;
+        
+        System.out.println("new address: " + newAddress);
+        
+        selenium.deleteAllVisibleCookies();
 
         return newAddress;
     }
@@ -187,6 +197,11 @@ public class NumberGuessClusterTest {
      * Asserts the game state matches what the page displays
      */
     private void updateGameState() {
+        
+        if (selenium.isCookiePresent("JSESSIONID")) {
+            System.out.println("On page " + selenium.getLocation().toString() + " JSESSIONID cookie: " + selenium.getCookieByName("JSESSIONID").getValue());           
+        }
+        
         GameState nextState = new GameState();
         nextState.setRemainingGuesses(getRemainingGuesses());
         nextState.setLargest(Integer.parseInt(selenium.getText(GUESS_BIGGEST)));
@@ -241,10 +256,22 @@ public class NumberGuessClusterTest {
     @Test
     @InSequence(1)
     public void guessingWithFailoverTest() throws MalformedURLException, InterruptedException {
+        
+        System.out.println("Pre start container1");
+        
         controller.start(CONTAINER1);
+        
+        System.out.println("Post start container1");
+        
         deployer.deploy(DEPLOYMENT1);
+        
+        System.out.println("Post deployment1");
+        
         controller.start(CONTAINER2);
+        
+        System.out.println("Post start container2");
         deployer.deploy(DEPLOYMENT2);
+        System.out.println("Post deployment2");
         
         selenium.open(new URL(contextPath1 + "/" + MAIN_PAGE));
         
@@ -294,6 +321,8 @@ public class NumberGuessClusterTest {
                 controller.start(CONTAINER1);
                 deployer.deploy(DEPLOYMENT1);
                 
+                Thread.sleep(GRACE_TIME_TO_MEMBERSHIP_CHANGE);
+                
                 deployer.undeploy(DEPLOYMENT2);
                 controller.stop(CONTAINER2);
             }
@@ -301,11 +330,11 @@ public class NumberGuessClusterTest {
                 controller.start(CONTAINER2);
                 deployer.deploy(DEPLOYMENT2);
                 
+                Thread.sleep(GRACE_TIME_TO_MEMBERSHIP_CHANGE);
+                
                 deployer.undeploy(DEPLOYMENT1);
                 controller.stop(CONTAINER1);
-            }
-            
-            Thread.sleep(GRACE_TIME_TO_MEMBERSHIP_CHANGE);
+            }                       
             
             switchBrowsers();
         }
