@@ -41,7 +41,7 @@
             <configuration>
                 <property name="managementAddress">node1</property>
                 <property name="managementPort">9999</property>
-                <property name="jbossHome">/home/maschmid/testing/as7/node1/jboss-as-7.1.0.CR1-SNAPSHOT</property>
+                <property name="jbossHome">/home/maschmid/testing/as7/node1/jboss-as-7.1.0.Final-SNAPSHOT</property>
                 <property name="javaVmArguments">-Djboss.node.name=node1 -Djava.net.preferIPv4Stack=true</property>
                 <property name="serverConfig">${jboss.server.config.file.name:standalone-ha.xml}</property>
             </configuration>
@@ -51,7 +51,7 @@
             <configuration>
                 <property name="managementAddress">node2</property>
                 <property name="managementPort">9999</property>
-                <property name="jbossHome">/home/maschmid/testing/as7/node2/jboss-as-7.1.0.CR1-SNAPSHOT</property>
+                <property name="jbossHome">/home/maschmid/testing/as7/node2/jboss-as-7.1.0.Final-SNAPSHOT</property>
                 <property name="javaVmArguments">-Djboss.node.name=node2 -Djava.net.preferIPv4Stack=true</property>
                 <property name="serverConfig">${jboss.server.config.file.name:standalone-ha.xml}</property>
             </configuration>
